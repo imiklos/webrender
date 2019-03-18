@@ -584,7 +584,6 @@ fn main() {
             adapter,
             surface,
             window_size: (dim.width, dim.height),
-            frame_count: args.value_of("frame_count").map(|f| f.parse::<usize>().unwrap()),
             descriptor_count: args.value_of("descriptor_count").map(|d| d.parse::<usize>().unwrap()),
             cache_path,
             save_cache: true,

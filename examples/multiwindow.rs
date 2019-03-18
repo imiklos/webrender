@@ -163,7 +163,6 @@ impl Window {
                     adapter,
                     surface,
                     window_size: (width as i32, height as i32),
-                    frame_count: None,
                     descriptor_count: None,
                     cache_path,
                     save_cache: true,

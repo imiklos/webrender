@@ -73,7 +73,6 @@ pub struct DeviceInit<B: hal::Backend> {
     pub adapter: hal::Adapter<B>,
     pub surface: B::Surface,
     pub window_size: (i32, i32),
-    pub frame_count: Option<usize>,
     pub descriptor_count: Option<usize>,
     pub cache_path: Option<PathBuf>,
     pub save_cache: bool,
@@ -86,7 +85,6 @@ pub struct Locals {
     uMode: i32,
 }
 
-const MAX_FRAME_COUNT: usize = 2;
 const DESCRIPTOR_COUNT: usize = 400;
 const DEBUG_DESCRIPTOR_COUNT: usize = 5;
 const DESCRIPTOR_SET_PER_DRAW: usize = 0;
@@ -2131,7 +2129,6 @@ impl<B: hal::Backend> Device<B> {
             adapter,
             mut surface,
             window_size,
-            frame_count,
             descriptor_count,
             cache_path,
             save_cache,
@@ -2182,6 +2179,7 @@ impl<B: hal::Backend> Device<B> {
             frame_depths,
             frame_images,
             viewport,
+            frame_count,
         ) = Device::init_swapchain_resources(
             &device,
             &memory_types,
@@ -2215,7 +2213,6 @@ impl<B: hal::Backend> Device<B> {
         let mut frame_fence = SmallVec::new();
         let mut command_pool = SmallVec::new();
         let mut staging_buffer_pool = SmallVec::new();
-        let frame_count = frame_count.unwrap_or(MAX_FRAME_COUNT);
         for _ in 0 .. frame_count {
             descriptor_pools.push(DescriptorPools::new(
                 &device,
@@ -2419,6 +2416,7 @@ impl<B: hal::Backend> Device<B> {
             frame_depths,
             frame_images,
             viewport,
+            _frame_count,
         ) = Device::init_swapchain_resources(
             &self.device,
             &self.memory_types,
@@ -2465,8 +2463,17 @@ impl<B: hal::Backend> Device<B> {
         Vec<DepthBuffer<B>>,
         Vec<ImageCore<B>>,
         hal::pso::Viewport,
+        usize,
     ) {
-        let (caps, formats, _present_modes) = surface.compatibility(&adapter.physical_device);
+        let (caps, formats, present_modes) = surface.compatibility(&adapter.physical_device);
+        let present_mode = {
+            use hal::window::PresentMode::*;
+            [Mailbox, Fifo, Relaxed, Immediate]
+                .iter()
+                .cloned()
+                .find(|pm| present_modes.contains(pm))
+                .expect("No PresentMode values specified!")
+        };
         let surface_format = formats.map_or(hal::format::Format::Bgra8Unorm, |formats| {
             formats
                 .into_iter()
@@ -2500,7 +2507,8 @@ impl<B: hal::Backend> Device<B> {
             hal::image::Usage::TRANSFER_SRC
                 | hal::image::Usage::TRANSFER_DST
                 | hal::image::Usage::COLOR_ATTACHMENT,
-        );
+        )
+        .with_mode(present_mode);
 
         let (swap_chain, backbuffer) =
             unsafe { device.create_swapchain(surface, swap_config, None) }
@@ -2707,6 +2715,11 @@ impl<B: hal::Backend> Device<B> {
             frame_depths,
             frame_images,
             viewport,
+            if present_mode == hal::window::PresentMode::Mailbox {
+                (caps.image_count.end - 1).min(3) as usize
+            } else {
+                (caps.image_count.end - 1).min(2) as usize
+            },
         )
     }
 
