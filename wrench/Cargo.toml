@@ -41,6 +41,7 @@ core-foundation = "0.6"
 [features]
 default = []
 headless = ["gl", "osmesa-sys", "osmesa-src"]
+headless_gfx = []
 pathfinder = ["webrender/pathfinder"]
 gfx = ["dirs"]
 gl = ["gleam", "glutin", "webrender/gleam"]

@@ -126,7 +126,7 @@ pub struct HeadlessContext {
     _buffer: Vec<u32>,
 }
 
-#[cfg(any(not(feature = "headless"), feature = "gfx"))]
+#[cfg(feature = "headless_gfx")]
 pub struct HeadlessContext {
     width: i32,
     height: i32,
@@ -173,7 +173,7 @@ impl HeadlessContext {
         }
     }
 
-    #[cfg(any(not(feature = "headless"), feature = "gfx"))]
+    #[cfg(feature = "headless_gfx")]
     fn new(width: i32, height: i32) -> Self {
         HeadlessContext { width, height }
     }
@@ -550,17 +550,17 @@ fn main() {
         None => webrender::ChasePrimitive::Nothing,
     };
 
-    let mut events_loop = if args.is_present("headless") {
+    let mut events_loop = if args.is_present("headless") || args.is_present("headless_gfx")  {
         None
     } else {
         Some(winit::EventsLoop::new())
     };
 
     let mut window = make_window(
-        size, dp_ratio, args.is_present("vsync"), &events_loop, args.is_present("angle"),
+        size, dp_ratio, args.is_present("vsync"), &None, args.is_present("angle"),
     );
-    let dp_ratio = dp_ratio.unwrap_or(window.hidpi_factor());
-    let dim = window.get_inner_size();
+    let dp_ratio = dp_ratio.unwrap_or(1.0);
+    //let dim = window.get_inner_size();
 
     let needs_frame_notifier = ["perf", "reftest", "png", "rawtest"]
         .iter()
@@ -578,12 +578,12 @@ fn main() {
         let cache_path = Some(PathBuf::from(&cache_dir).join("pipeline_cache.bin"));
         let instance = back::Instance::create("gfx-rs instance", 1);
         let adapter = instance.enumerate_adapters().remove(0);
-        let surface = instance.create_surface(window.get_window());
+        //let surface = instance.create_surface(window.get_window());
         webrender::DeviceInit {
             instance: Box::new(instance),
             adapter,
-            surface,
-            window_size: (dim.width, dim.height),
+            // surface,
+            window_size: (size.width, size.height),
             descriptor_count: args.value_of("descriptor_count").map(|d| d.parse::<usize>().unwrap()),
             cache_path,
             save_cache: true,
@@ -601,7 +601,7 @@ fn main() {
         res_path,
         dp_ratio,
         save_type,
-        dim,
+        size,
         args.is_present("rebuild"),
         args.is_present("no_subpixel_aa"),
         args.is_present("verbose"),
