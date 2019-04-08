@@ -1,15 +1,5 @@
 dist: trusty
 language: rust
-rust:
-  - 1.31.0
-  - nightly
-matrix:
-  fast_finish: true
-  allow_failures:
-  - rust: nightly
-os:
-  - linux
-  - osx
 
 addons:
   apt:
@@ -22,10 +12,7 @@ addons:
       - llvm-3.9-dev
       - libedit-dev
       - python
-env:
-  - BUILD_KIND=DEBUG RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
-  - BUILD_KIND=RELEASE_BUILD RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
-  - BUILD_KIND=RELEASE_TEST RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
+
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export LLVM_CONFIG=/usr/lib/llvm-3.9/bin/llvm-config; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -36,18 +23,86 @@ before_install:
   - source ../venv/bin/activate
   - python --version
   - pip install mako voluptuous PyYAML servo-tidy
-script:
-#  - servo-tidy
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender_api && cargo test --verbose --features "ipc"); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --no-default-features); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --no-default-features --features capture,serde); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --features profiler,capture,serde); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --features replay,serde); fi
-#  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --no-default-features --features pathfinder); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd webrender && cargo check --verbose --no-default-features --features serialize_program); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd wrench && cargo check --verbose --features env_logger); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cd examples && cargo check --verbose); fi
-  - if [ $BUILD_KIND = DEBUG ]; then (cargo test --all --verbose); fi
-  - if [ $BUILD_KIND = RELEASE_TEST ]; then (cd wrench && python script/headless.py reftest); fi
-  - if [ $BUILD_KIND = RELEASE_BUILD ]; then (cd wrench && cargo build --release); fi
-  - if [ $TRAVIS_RUST_VERSION == "nightly" ]; then (cd webrender && cargo bench --verbose); fi
+
+env:
+  - RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
+
+matrix:
+  include:
+    - name: "Debug Test"
+      os: linux
+      script:
+        - ci-scripts/linux-debug-tests.sh
+      rust: 1.31.0
+
+    - name: "Release Build"
+      os: linux
+      script:
+        - cd wrench && cargo build --release
+      rust: 1.31.0
+
+    - name: "Release Test"
+      os: linux
+      script:
+        - cd wrench && python script/headless.py reftest
+      rust: 1.31.0
+
+    - name: "Debug Test"
+      os: osx
+      rust: 1.31.0
+
+    - name: "Release Build"
+      os: osx
+      rust: 1.31.0
+
+    - name: "Release Test"
+      os: osx
+      script:
+        - cd wrench && python script/headless.py reftest
+      rust: 1.31.0
+
+    - name: "Debug Test"
+      os: linux
+      script:
+        - ci-scripts/linux-debug-tests.sh
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+    - name: "Release Build"
+      os: linux
+      script:
+        - cd wrench && cargo build --release
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+    - name: "Release Test"
+      os: linux
+      script:
+        - cd wrench && python script/headless.py reftest
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+    - name: "Debug Test"
+      os: osx
+      script:
+        - ci-scripts/linux-debug-tests.sh
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+    - name: "Release Build"
+      os: osx
+      script:
+        - cd wrench && cargo build --release
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+    - name: "Release Test"
+      os: osx
+      script:
+        - cd wrench && python script/headless.py reftest
+        - cd webrender && cargo bench --verbose
+      rust: nightly
+
+  fast_finish: true
+  allow_failures:
+   - rust: nightly
