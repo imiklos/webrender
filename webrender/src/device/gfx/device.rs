@@ -345,96 +345,19 @@ impl<B: hal::Backend> Device<B> {
                 )
             }
             None => {
-                let surface_format = ImageFormat::BGRA8;
-                let depth_format = hal::format::Format::D32Sfloat;
-                let render_pass = Device::create_render_passes(
-                    &device,
-                    hal::format::Format::Bgra8Unorm,
+                let (
+                    surface_format,
                     depth_format,
-                );
-
-                let extent = hal::image::Extent {
-                    width: window_size.0 as _,
-                    height: window_size.1 as _,
-                    depth: 1,
-                };
-                let frame_count = 2;
-                let (frame_images, frame_depths, framebuffers, framebuffers_depth) = {
-                    let mut cores = Vec::new();
-                    let mut frame_depths = Vec::new();
-                    let mip_levels = 1;
-                    let kind = hal::image::Kind::D2(
-                        extent.width as _,
-                        extent.height as _,
-                        extent.depth as _,
-                        1,
-                    );
-                    for _ in 0 .. frame_count {
-                        cores.push(ImageCore::create(
-                            &device,
-                            &mut heaps,
-                            kind,
-                            hal::image::ViewKind::D2,
-                            mip_levels,
-                            hal::format::Format::Bgra8Unorm,
-                            hal::image::Usage::TRANSFER_SRC
-                                | hal::image::Usage::TRANSFER_DST
-                                | hal::image::Usage::COLOR_ATTACHMENT,
-                            hal::image::SubresourceRange {
-                                aspects: hal::format::Aspects::COLOR,
-                                levels: 0 .. 1,
-                                layers: 0 .. 1,
-                            },
-                        ));
-                        frame_depths.push(DepthBuffer::new(
-                            &device,
-                            &mut heaps,
-                            extent.width,
-                            extent.height,
-                            depth_format,
-                        ));
-                    }
-                    let fbos = cores
-                        .iter()
-                        .map(|core| {
-                            unsafe {
-                                device.create_framebuffer(
-                                    &render_pass.bgra8,
-                                    Some(&core.view),
-                                    extent,
-                                )
-                            }
-                            .expect("create_framebuffer failed")
-                        })
-                        .collect();
-                    let fbos_depth = cores
-                        .iter()
-                        .zip(frame_depths.iter())
-                        .map(|(core, depth)| {
-                            unsafe {
-                                device.create_framebuffer(
-                                    &render_pass.bgra8_depth,
-                                    vec![&core.view, &depth.core.view],
-                                    extent,
-                                )
-                            }
-                            .expect("create_framebuffer failed")
-                        })
-                        .collect();
-                    (cores, frame_depths, fbos, fbos_depth)
-                };
-                let viewport = hal::pso::Viewport {
-                    rect: hal::pso::Rect {
-                        x: 0,
-                        y: 0,
-                        w: extent.width as _,
-                        h: extent.height as _,
-                    },
-                    depth: 0.0 .. 1.0,
-                };
-
+                    render_pass,
+                    framebuffers,
+                    framebuffers_depth,
+                    frame_depths,
+                    frame_images,
+                    viewport,
+                    frame_count,
+                ) = Device::init_resources_without_surface(&device, &mut heaps, window_size);
                 (
-                    None, //swap_chain,
+                    None,
                     surface_format,
                     depth_format,
                     render_pass,
@@ -657,8 +580,6 @@ impl<B: hal::Backend> Device<B> {
             for framebuffer_depth in self.framebuffers_depth.drain(..) {
                 self.device.destroy_framebuffer(framebuffer_depth);
             }
-            self.device
-                .destroy_swapchain(self.swap_chain.take().unwrap());
         }
 
         let window_size =
@@ -675,15 +596,68 @@ impl<B: hal::Backend> Device<B> {
             frame_images,
             viewport,
             _frame_count,
-        ) = Device::init_swapchain_resources(
-            &self.device,
-            &mut self.heaps,
-            &self.adapter,
-            self.surface.as_mut().unwrap(),
-            window_size,
-        );
+        ) = if let Some (ref mut surface) = self.surface {
+            unsafe {
+                self.device
+                    .destroy_swapchain(self.swap_chain.take().unwrap());
+            }
+            let (
+                swap_chain,
+                surface_format,
+                depth_format,
+                render_pass,
+                framebuffers,
+                framebuffers_depth,
+                frame_depths,
+                frame_images,
+                viewport,
+                frame_count,
+            ) = Device::init_swapchain_resources(
+                &self.device,
+                &mut self.heaps,
+                &self.adapter,
+                surface,
+                window_size,
+            );
+            (
+                Some(swap_chain),
+                surface_format,
+                depth_format,
+                render_pass,
+                framebuffers,
+                framebuffers_depth,
+                frame_depths,
+                frame_images,
+                viewport,
+                frame_count,
+            )
+        } else {
+            let (
+                surface_format,
+                depth_format,
+                render_pass,
+                framebuffers,
+                framebuffers_depth,
+                frame_depths,
+                frame_images,
+                viewport,
+                frame_count,
+            ) = Device::init_resources_without_surface(&self.device, &mut self.heaps, window_size);
+            (
+                None,
+                surface_format,
+                depth_format,
+                render_pass,
+                framebuffers,
+                framebuffers_depth,
+                frame_depths,
+                frame_images,
+                viewport,
+                frame_count,
+            )
+        };
 
-        self.swap_chain = Some(swap_chain);
+        self.swap_chain = swap_chain;
         self.render_pass = Some(render_pass);
         self.framebuffers = framebuffers;
         self.framebuffers_depth = framebuffers_depth;
@@ -869,6 +843,122 @@ impl<B: hal::Backend> Device<B> {
             } else {
                 (caps.image_count.end - 1).min(2) as usize
             },
+        )
+    }
+
+    fn init_resources_without_surface(
+        device: &B::Device,
+        heaps: &mut Heaps<B>,
+        window_size: (i32, i32),
+    ) -> (
+        ImageFormat,
+        hal::format::Format,
+        RenderPass<B>,
+        Vec<B::Framebuffer>,
+        Vec<B::Framebuffer>,
+        Vec<DepthBuffer<B>>,
+        Vec<ImageCore<B>>,
+        hal::pso::Viewport,
+        usize,
+    ) {
+        let surface_format = ImageFormat::BGRA8;
+        let depth_format = hal::format::Format::D32Sfloat;
+        let render_pass = Device::create_render_passes(
+            device,
+            hal::format::Format::Bgra8Unorm,
+            depth_format,
+        );
+
+        let extent = hal::image::Extent {
+            width: window_size.0 as _,
+            height: window_size.1 as _,
+            depth: 1,
+        };
+        let frame_count = 2;
+        let (frame_images, frame_depths, framebuffers, framebuffers_depth) = {
+            let mut cores = Vec::new();
+            let mut frame_depths = Vec::new();
+            let mip_levels = 1;
+            let kind = hal::image::Kind::D2(
+                extent.width as _,
+                extent.height as _,
+                extent.depth as _,
+                1,
+            );
+            for _ in 0 .. frame_count {
+                cores.push(ImageCore::create(
+                    device,
+                    heaps,
+                    kind,
+                    hal::image::ViewKind::D2,
+                    mip_levels,
+                    hal::format::Format::Bgra8Unorm,
+                    hal::image::Usage::TRANSFER_SRC
+                        | hal::image::Usage::TRANSFER_DST
+                        | hal::image::Usage::COLOR_ATTACHMENT,
+                    hal::image::SubresourceRange {
+                        aspects: hal::format::Aspects::COLOR,
+                        levels: 0 .. 1,
+                        layers: 0 .. 1,
+                    },
+                ));
+                frame_depths.push(DepthBuffer::new(
+                    device,
+                    heaps,
+                    extent.width,
+                    extent.height,
+                    depth_format,
+                ));
+            }
+            let fbos = cores
+                .iter()
+                .map(|core| {
+                    unsafe {
+                        device.create_framebuffer(
+                            &render_pass.bgra8,
+                            Some(&core.view),
+                            extent,
+                        )
+                    }
+                    .expect("create_framebuffer failed")
+                })
+                .collect();
+            let fbos_depth = cores
+                .iter()
+                .zip(frame_depths.iter())
+                .map(|(core, depth)| {
+                    unsafe {
+                        device.create_framebuffer(
+                            &render_pass.bgra8_depth,
+                            vec![&core.view, &depth.core.view],
+                            extent,
+                        )
+                    }
+                    .expect("create_framebuffer failed")
+                })
+                .collect();
+            (cores, frame_depths, fbos, fbos_depth)
+        };
+        let viewport = hal::pso::Viewport {
+            rect: hal::pso::Rect {
+                x: 0,
+                y: 0,
+                w: extent.width as _,
+                h: extent.height as _,
+            },
+            depth: 0.0 .. 1.0,
+        };
+
+        (
+            surface_format,
+            depth_format,
+            render_pass,
+            framebuffers,
+            framebuffers_depth,
+            frame_depths,
+            frame_images,
+            viewport,
+            frame_count,
         )
     }
 
