@@ -11,10 +11,6 @@ os:
   - linux
   - osx
 
-branches:
-  only:
-    - master
-
 addons:
   apt:
     sources:
