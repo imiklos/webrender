@@ -1,19 +1,76 @@
 dist: trusty
 language: rust
-rust:
-  - 1.31.0
-  - nightly
-matrix:
-  fast_finish: true
-  allow_failures:
-  - rust: nightly
-os:
-  - linux
-  - osx
 
-branches:
-  only:
-    - master
+jobs:
+  include:
+    - name: "Debug"
+      rust: "1.31.0"
+      env: "BUILD_KIND=DEBUG"
+      os: linux
+
+    - name: "Debug"
+      rust: "1.31.0"
+      env: "BUILD_KIND=DEBUG"
+      os: osx
+
+    - name: "Release headless test"
+      rust: "1.31.0"
+      env: "BUILD_KIND=RELEASE_TEST"
+      os: linux
+
+    - name: "Release headless test"
+      rust: "1.31.0"
+      env: "BUILD_KIND=RELEASE_TEST"
+      os: osx
+
+    - name: "Release build"
+      rust: "1.31.0"
+      env: "BUILD_KIND=RELEASE_BUILD"
+      os: linux
+
+    - name: "Release build"
+      rust: "1.31.0"
+      env: "BUILD_KIND=RELEASE_BUILD"
+      os: osx
+
+# Nightly builds, allow_failures
+    - name: "Debug"
+      rust: "nightly"
+      env: "BUILD_KIND=DEBUG"
+      os: linux
+
+    - name: "Debug"
+      rust: "nightly"
+      env: "BUILD_KIND=DEBUG"
+      os: osx
+
+    - name: "Release headless test"
+      rust: "nightly"
+      env: "BUILD_KIND=RELEASE_TEST"
+      os: linux
+
+    - name: "Release headless test"
+      rust: "nightly"
+      env: "BUILD_KIND=RELEASE_TEST"
+      os: osx
+
+    - name: "Release build"
+      rust: "nightly"
+      env: "BUILD_KIND=RELEASE_BUILD"
+      os: linux
+
+    - name: "Release build"
+      rust: "nightly"
+      env: "BUILD_KIND=RELEASE_BUILD"
+      os: osx
+  allow_failures:
+    - rust: "nightly"
+  fast_finish: true
+
+
+env:
+  global:
+    - RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
 
 addons:
   apt:
@@ -26,9 +83,7 @@ addons:
       - llvm-3.9-dev
       - libedit-dev
       - python
-env:
-  - BUILD_KIND=DEBUG RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
-  - BUILD_KIND=RELEASE RUST_BACKTRACE=1 RUSTFLAGS='--deny warnings'
+
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export LLVM_CONFIG=/usr/lib/llvm-3.9/bin/llvm-config; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -39,6 +94,7 @@ before_install:
   - source ../venv/bin/activate
   - python --version
   - pip install mako voluptuous PyYAML servo-tidy
+
 script:
 #  - servo-tidy
   - if [ $BUILD_KIND = DEBUG ]; then (cd webrender_api && cargo test --verbose --features "ipc"); fi
@@ -51,6 +107,6 @@ script:
   - if [ $BUILD_KIND = DEBUG ]; then (cd wrench && cargo check --verbose --features env_logger); fi
   - if [ $BUILD_KIND = DEBUG ]; then (cd examples && cargo check --verbose); fi
   - if [ $BUILD_KIND = DEBUG ]; then (cargo test --all --verbose); fi
-  - if [ $BUILD_KIND = RELEASE ]; then (cd wrench && python script/headless.py reftest); fi
-  - if [ $BUILD_KIND = RELEASE ]; then (cd wrench && cargo build --release); fi
+  - if [ $BUILD_KIND = RELEASE_TEST ]; then (cd wrench && python script/headless.py reftest); fi
+  - if [ $BUILD_KIND = RELEASE_BUILD ]; then (cd wrench && cargo build --release); fi
   - if [ $TRAVIS_RUST_VERSION == "nightly" ]; then (cd webrender && cargo bench --verbose); fi
