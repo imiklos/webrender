@@ -1772,10 +1772,8 @@ impl<B: hal::Backend> Renderer<B> {
             match msg {
                 #[cfg(not(feature = "gleam"))]
                 ResultMsg::UpdateWindowSize(window_size) => {
-                    if window_size != self.device.viewport_size() {
-                        info!("Resize from {:?} to {:?}", self.device.viewport_size(), window_size);
-                        self.resize(Some((window_size.width, window_size.height)));
-                    }
+                    println!("Resize from {:?} to {:?}", self.device.viewport_size(), window_size);
+                    self.resize(Some((window_size.width, window_size.height)));
                 }
                 ResultMsg::PublishPipelineInfo(mut pipeline_info) => {
                     for (pipeline_id, epoch) in pipeline_info.epochs {
