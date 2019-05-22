@@ -211,7 +211,7 @@ impl<B: hal::Backend> Image<B> {
         use hal::pso::PipelineStage;
         let pos = rect.origin;
         let size = rect.size;
-        staging_buffer_pool.add(device, image_data);
+        staging_buffer_pool.add(device, image_data, self.format.bytes_per_pixel() as usize - 1);
         let buffer = staging_buffer_pool.buffer();
         let cmd_buffer = cmd_pool.acquire_command_buffer();
 
