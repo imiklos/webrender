@@ -44,7 +44,7 @@ use super::super::super::shader_source;
 use hal;
 use hal::pso::{BlendState, DepthTest};
 use hal::{Device as BackendDevice, PhysicalDevice, Surface, Swapchain};
-use hal::{Backbuffer, SwapchainConfig};
+use hal::{SwapchainConfig};
 use hal::pso::PipelineStage;
 use hal::queue::Submission;
 
@@ -245,8 +245,8 @@ impl<B: hal::Backend> Device<B> {
                     }
                 }
                 if let Some(mut dynamic) = config.dynamic {
-                    dynamic.max_block_size = dynamic.max_block_size.min(
-                        (memory_properties.memory_heaps[mt.heap_index as usize] / 32 - 1)
+                    dynamic.min_device_allocation = dynamic.min_device_allocation.min(
+                        (memory_properties.memory_heaps[mt.heap_index as usize] / 1048)
                             .next_power_of_two(),
                     );
                     dynamic.block_size_granularity = dynamic.block_size_granularity.min(
@@ -755,7 +755,7 @@ impl<B: hal::Backend> Device<B> {
             swap_config.composite_alpha = hal::CompositeAlpha::OPAQUE;
         }
 
-        let (swap_chain, backbuffer) =
+        let (swap_chain, images) =
             unsafe { device.create_swapchain(surface, swap_config, None) }
                 .expect("create_swapchain failed");
         let depth_format = hal::format::Format::D32Sfloat; //maybe d24s8?
@@ -768,8 +768,7 @@ impl<B: hal::Backend> Device<B> {
         };
         let mut frame_depths = Vec::new();
         // Framebuffer and render target creation
-        let (frame_images, framebuffers, framebuffers_depth) = match backbuffer {
-            Backbuffer::Images(images) => {
+        let (frame_images, framebuffers, framebuffers_depth) = {
                 let extent = hal::image::Extent {
                     width: extent.width as _,
                     height: extent.height as _,
@@ -822,9 +821,6 @@ impl<B: hal::Backend> Device<B> {
                     })
                     .collect();
                 (cores, fbos, fbos_depth)
-            }
-            // TODO fix depth fbos
-            Backbuffer::Framebuffer(fbo) => (vec![], vec![fbo], vec![]),
         };
 
         info!("Frame images: {:?}\nFrame depths: {:?}", frame_images, frame_depths);

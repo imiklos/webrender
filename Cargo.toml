@@ -12,14 +12,5 @@ members = [
 debug = true
 panic = "abort"
 
-#[patch.crates-io]
-#serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_from_enums9", feature="deserialize_in_place" }
-
-[replace]
-"https://github.com/rust-lang/crates.io-index#serde_derive:1.0.80" = { git = "https://github.com/servo/serde", branch = "deserialize_from_enums9", feature = "deserialize_in_place" }
-"https://github.com/rust-lang/crates.io-index#gfx-backend-empty:0.1.0" = { git = "https://github.com/gfx-rs/gfx.git", rev="37a177c6ba59a0b073c5ee56eaf9e5ce3b9a3d33" }
-"https://github.com/rust-lang/crates.io-index#gfx-backend-dx12:0.1.0" = { git = "https://github.com/gfx-rs/gfx.git", rev="37a177c6ba59a0b073c5ee56eaf9e5ce3b9a3d33" }
-"https://github.com/rust-lang/crates.io-index#gfx-backend-metal:0.1.0" = { git = "https://github.com/gfx-rs/gfx.git", rev="37a177c6ba59a0b073c5ee56eaf9e5ce3b9a3d33" }
-"https://github.com/rust-lang/crates.io-index#gfx-backend-vulkan:0.1.0" = { git = "https://github.com/gfx-rs/gfx.git", rev="37a177c6ba59a0b073c5ee56eaf9e5ce3b9a3d33" }
-"https://github.com/rust-lang/crates.io-index#gfx-hal:0.1.0" = { git = "https://github.com/gfx-rs/gfx.git", rev="37a177c6ba59a0b073c5ee56eaf9e5ce3b9a3d33" }
-"https://github.com/rust-lang/crates.io-index#rendy-memory:0.1.0" = { git = "https://github.com/omni-viral/rendy.git" }
+[patch.crates-io]
+serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_from_enums9", feature="deserialize_in_place" }

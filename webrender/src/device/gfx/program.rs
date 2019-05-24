@@ -8,6 +8,7 @@ use hal::{self, Device as BackendDevice};
 use internal_types::FastHashMap;
 use smallvec::SmallVec;
 use rendy_memory::Heaps;
+use std::borrow::Cow::{Borrowed};
 
 use super::buffer::{InstanceBufferHandler, UniformBufferHandler, VertexBufferHandler};
 use super::blend_state::SUBPIXEL_CONSTANT_TEXT_COLOR;
@@ -146,16 +147,16 @@ impl<B: hal::Backend> Program<B> {
                     entry: ENTRY_NAME,
                     module: &vs_module,
                     specialization: hal::pso::Specialization {
-                        constants: &constants,
-                        data: &specialization_data.as_slice(),
+                        constants: Borrowed(&constants),
+                        data: Borrowed(&specialization_data.as_slice()),
                     },
                 },
                 hal::pso::EntryPoint::<B> {
                     entry: ENTRY_NAME,
                     module: &fs_module,
                     specialization: hal::pso::Specialization {
-                        constants: &constants,
-                        data: &specialization_data.as_slice(),
+                        constants: Borrowed(&constants),
+                        data: Borrowed(&specialization_data.as_slice()),
                     },
                 },
             );
