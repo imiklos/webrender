@@ -1770,11 +1770,6 @@ impl<B: hal::Backend> Renderer<B> {
         // Pull any pending results and return the most recent.
         while let Ok(msg) = self.result_rx.try_recv() {
             match msg {
-                #[cfg(not(feature = "gleam"))]
-                ResultMsg::UpdateWindowSize(window_size) => {
-                    println!("Resize from {:?} to {:?}", self.device.viewport_size(), window_size);
-                    self.resize(Some((window_size.width, window_size.height)));
-                }
                 ResultMsg::PublishPipelineInfo(mut pipeline_info) => {
                     for (pipeline_id, epoch) in pipeline_info.epochs {
                         self.pipeline_info.epochs.insert(pipeline_id, epoch);
@@ -1917,7 +1912,7 @@ impl<B: hal::Backend> Renderer<B> {
     }
 
     #[cfg(not(feature = "gleam"))]
-    fn resize(&mut self, window_size: Option<(i32, i32)>) -> DeviceIntSize {
+    pub fn resize(&mut self, window_size: Option<(i32, i32)>) -> DeviceIntSize {
         self.shaders.borrow_mut().reset();
         let size = self.device.recreate_swapchain(window_size);
         if let Some(debug_renderer) = self.debug.take() {
@@ -2249,13 +2244,7 @@ impl<B: hal::Backend> Renderer<B> {
         };
 
         #[cfg(not(feature="gleam"))]
-        {
-            if !self.device.set_next_frame_id() {
-                self.resize(None);
-                return Ok(RendererStats::empty());
-            }
-        }
-
+        self.device.set_next_frame_id();
 
         let cpu_frame_id = profile_timers.cpu_time.profile(|| {
             let _gm = self.gpu_profile.start_marker("begin frame");
@@ -2429,11 +2418,7 @@ impl<B: hal::Backend> Renderer<B> {
             }
 
             #[cfg(not(feature="gleam"))]
-            {
-                if !self.device.submit_to_gpu() {
-                    self.resize(None);
-                }
-            }
+            self.device.submit_to_gpu();
             self.device.end_frame();
         });
         if framebuffer_size.is_some() {

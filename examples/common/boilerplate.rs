@@ -352,8 +352,13 @@ pub fn main_wrapper<E: Example>(
                 event: winit::WindowEvent::Resized(dims),
                 ..
             } => {
-                let new_size = DeviceIntSize::new((dims.width as f32 * device_pixel_ratio) as i32, (dims.height as f32 * device_pixel_ratio) as i32);
-                framebuffer_size = new_size;
+                let new_size = ((dims.width as f32 * device_pixel_ratio) as i32, (dims.height as f32 * device_pixel_ratio) as i32);
+                // Workaround for Rust issue #15701 (E0658).
+                #[cfg(not(feature = "gleam"))]
+                { framebuffer_size = renderer.resize(Some(new_size)); }
+                #[cfg(feature = "gleam")]
+                { framebuffer_size = DeviceIntSize::new(new_size.0,new_size.1); }
+
                 layout_size = framebuffer_size.to_f32() / euclid::TypedScale::new(device_pixel_ratio);
                 api.set_window_parameters(
                     document_id,
