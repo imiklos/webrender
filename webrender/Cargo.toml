@@ -8,7 +8,7 @@ description = "A GPU accelerated 2D renderer for web content"
 build = "build.rs"
 
 [features]
-default = ["freetype-lib"]
+default = ["freetype-lib", "serde"]
 freetype-lib = ["freetype/servo-freetype-sys"]
 profiler = ["thread_profiler/thread_profiler"]
 debugger = ["ws", "serde_json", "image", "base64"]
@@ -25,7 +25,7 @@ cfg-if = "0.1.2"
 glsl-to-spirv = "0.1"
 gfx-hal = "0.2"
 ron = "0.1.7"
-serde = { version = "1.0", features = ["serde_derive"] }
+serde = { version = "1.0", features = ["serde_derive"], optional = true }
 
 [dependencies]
 app_units = "0.7"
