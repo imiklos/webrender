@@ -390,11 +390,14 @@ impl<B: hal::Backend> Device<B> {
             (device, queues.take(id).unwrap())
         };
 
+        let surface_format = hal::format::Format::Bgra8Unorm;
+        let depth_format = hal::format::Format::D32Sfloat;
+        let render_pass = Device::create_render_passes(&device, surface_format, depth_format);
+
         let (
             swap_chain,
             surface_format,
             depth_format,
-            render_pass,
             framebuffers,
             framebuffers_depth,
             frame_depths,
@@ -407,7 +410,6 @@ impl<B: hal::Backend> Device<B> {
                     swap_chain,
                     surface_format,
                     depth_format,
-                    render_pass,
                     framebuffers,
                     framebuffers_depth,
                     frame_depths,
@@ -421,12 +423,12 @@ impl<B: hal::Backend> Device<B> {
                     surface,
                     Some(window_size),
                     None,
+                    &render_pass,
                 );
                 (
                     Some(swap_chain),
                     surface_format,
                     depth_format,
-                    render_pass,
                     framebuffers,
                     framebuffers_depth,
                     frame_depths,
@@ -439,19 +441,22 @@ impl<B: hal::Backend> Device<B> {
                 let (
                     surface_format,
                     depth_format,
-                    render_pass,
                     framebuffers,
                     framebuffers_depth,
                     frame_depths,
                     frame_images,
                     viewport,
                     frame_count,
-                ) = Device::init_resources_without_surface(&device, &mut heaps, window_size);
+                ) = Device::init_resources_without_surface(
+                    &device,
+                    &mut heaps,
+                    window_size,
+                    &render_pass
+                );
                 (
                     None,
                     surface_format,
                     depth_format,
-                    render_pass,
                     framebuffers,
                     framebuffers_depth,
                     frame_depths,
@@ -699,10 +704,6 @@ impl<B: hal::Backend> Device<B> {
     pub(crate) fn recreate_swapchain(&mut self, window_size: Option<(i32, i32)>) -> DeviceIntSize {
         self.device.wait_idle().unwrap();
 
-        for (_id, program) in self.programs.drain() {
-            program.deinit(&self.device, &mut self.heaps);
-        }
-
         for image in self.frame_images.drain(..) {
             image.deinit(&self.device, &mut self.heaps);
         }
@@ -710,8 +711,6 @@ impl<B: hal::Backend> Device<B> {
         for depth in self.frame_depths.drain(..) {
             depth.deinit(&self.device, &mut self.heaps);
         }
-
-        self.render_pass.take().unwrap().deinit(&self.device);
 
         for pools in self.descriptor_pools_per_draw.iter_mut() {
             pools.reset(&self.device)
@@ -756,7 +755,6 @@ impl<B: hal::Backend> Device<B> {
             swap_chain,
             surface_format,
             depth_format,
-            render_pass,
             framebuffers,
             framebuffers_depth,
             frame_depths,
@@ -768,7 +766,6 @@ impl<B: hal::Backend> Device<B> {
                 swap_chain,
                 surface_format,
                 depth_format,
-                render_pass,
                 framebuffers,
                 framebuffers_depth,
                 frame_depths,
@@ -782,12 +779,12 @@ impl<B: hal::Backend> Device<B> {
                 surface,
                 window_size,
                 self.swap_chain.take(),
+                self.render_pass.as_ref().unwrap()
             );
             (
                 Some(swap_chain),
                 surface_format,
                 depth_format,
-                render_pass,
                 framebuffers,
                 framebuffers_depth,
                 frame_depths,
@@ -799,19 +796,22 @@ impl<B: hal::Backend> Device<B> {
             let (
                 surface_format,
                 depth_format,
-                render_pass,
                 framebuffers,
                 framebuffers_depth,
                 frame_depths,
                 frame_images,
                 viewport,
                 frame_count,
-            ) = Device::init_resources_without_surface(&self.device, &mut self.heaps, window_size.unwrap_or((0,0)));
+            ) = Device::init_resources_without_surface(
+                &self.device,
+                &mut self.heaps,
+                window_size.unwrap_or((0,0)),
+                self.render_pass.as_ref().unwrap()
+            );
             (
                 None,
                 surface_format,
                 depth_format,
-                render_pass,
                 framebuffers,
                 framebuffers_depth,
                 frame_depths,
@@ -822,7 +822,6 @@ impl<B: hal::Backend> Device<B> {
         };
 
         self.swap_chain = swap_chain;
-        self.render_pass = Some(render_pass);
         self.framebuffers = framebuffers;
         self.framebuffers_depth = framebuffers_depth;
         self.frame_depths = frame_depths;
@@ -854,11 +853,11 @@ impl<B: hal::Backend> Device<B> {
         surface: &mut B::Surface,
         window_size: Option<(i32, i32)>,
         old_swap_chain: Option<B::Swapchain>,
+        render_pass: &RenderPass<B>,
     ) -> (
         B::Swapchain,
         ImageFormat,
         hal::format::Format,
-        RenderPass<B>,
         Vec<B::Framebuffer>,
         Vec<B::Framebuffer>,
         Vec<DepthBuffer<B>>,
@@ -921,8 +920,6 @@ impl<B: hal::Backend> Device<B> {
             unsafe { device.create_swapchain(surface, swap_config, old_swap_chain) }
                 .expect("create_swapchain failed");
         let depth_format = hal::format::Format::D32Sfloat; //maybe d24s8?
-
-        let render_pass = Device::create_render_passes(device, surface_format, depth_format);
 
         let image_format = match surface_format {
             hal::format::Format::Bgra8Unorm => ImageFormat::BGRA8,
@@ -1001,7 +998,6 @@ impl<B: hal::Backend> Device<B> {
             swap_chain,
             image_format,
             depth_format,
-            render_pass,
             framebuffers,
             framebuffers_depth,
             frame_depths,
@@ -1019,10 +1015,10 @@ impl<B: hal::Backend> Device<B> {
         device: &B::Device,
         heaps: &mut Heaps<B>,
         window_size: (i32, i32),
+        render_pass: &RenderPass<B>,
     ) -> (
         ImageFormat,
         hal::format::Format,
-        RenderPass<B>,
         Vec<B::Framebuffer>,
         Vec<B::Framebuffer>,
         Vec<DepthBuffer<B>>,
@@ -1032,11 +1028,6 @@ impl<B: hal::Backend> Device<B> {
     ) {
         let surface_format = ImageFormat::BGRA8;
         let depth_format = hal::format::Format::D32Sfloat;
-        let render_pass = Device::create_render_passes(
-            device,
-            hal::format::Format::Bgra8Unorm,
-            depth_format,
-        );
 
         let extent = hal::image::Extent {
             width: window_size.0 as _,
@@ -1121,7 +1112,6 @@ impl<B: hal::Backend> Device<B> {
         (
             surface_format,
             depth_format,
-            render_pass,
             framebuffers,
             framebuffers_depth,
             frame_depths,
