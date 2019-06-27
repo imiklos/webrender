@@ -567,7 +567,7 @@ fn main() {
     let mut window = make_window(
         size, dp_ratio, args.is_present("vsync"), &events_loop, args.is_present("angle"),
     );
-    let (dp_ratio, dim) = if args.is_present("headless") {
+    let (dp_ratio, mut dim) = if args.is_present("headless") {
         let dp_ratio = dp_ratio.unwrap_or(1.0);
         let dim = size;
         (dp_ratio, dim)
@@ -609,6 +609,10 @@ fn main() {
             save_cache: true,
         }
     };
+
+    if window.get_inner_size() != dim {
+        dim = window.get_inner_size();
+    }
 
     #[cfg(feature = "gl")]
     let init = webrender::DeviceInit {
