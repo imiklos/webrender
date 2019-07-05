@@ -19,6 +19,10 @@ const DEPTH_RANGE: hal::image::SubresourceRange = hal::image::SubresourceRange {
     layers: 0 .. 1,
 };
 
+/// The Vulkan spec states: bufferOffset must be a multiple of 4 for VkBufferImageCopy
+/// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#VkBufferImageCopy
+const BUFFER_COPY_ALIGNMENT: i32 = 4;
+
 #[derive(Debug)]
 pub(super) struct ImageCore<B: hal::Backend> {
     pub(super) image: B::Image,
@@ -215,7 +219,7 @@ impl<B: hal::Backend> Image<B> {
         use hal::pso::PipelineStage;
         let pos = rect.origin;
         let size = rect.size;
-        staging_buffer_pool.add(device, image_data, self.format.bytes_per_pixel() as usize - 1);
+        staging_buffer_pool.add(device, image_data, self.format.bytes_per_pixel().max(BUFFER_COPY_ALIGNMENT) as usize - 1);
         let buffer = staging_buffer_pool.buffer();
         let cmd_buffer = cmd_pool.acquire_command_buffer();
 
