@@ -158,6 +158,13 @@ impl Window {
                 let cache_dir = dirs::cache_dir().expect("User's cache directory not found");
                 let cache_path = Some(PathBuf::from(&cache_dir).join("pipeline_cache.bin"));
 
+                #[cfg(feature = "vulkan")]
+                let backend_api = webrender::BackendApiType::Vulkan;
+                #[cfg(feature = "metal")]
+                let backend_api = webrender::BackendApiType::Metal;
+                #[cfg(feature = "dx12")]
+                let backend_api = webrender::BackendApiType::Dx12;
+
                 webrender::DeviceInit {
                     instance: Box::new(instance),
                     adapter,
@@ -166,6 +173,7 @@ impl Window {
                     descriptor_count: None,
                     cache_path,
                     save_cache: true,
+                    backend_api,
                 }
             };
             let opts = webrender::RendererOptions {
@@ -250,8 +258,13 @@ impl Window {
                     api.send_debug_cmd(DebugCommand::SetFlags(DebugFlags::PROFILER_DBG))
                 }
                 winit::WindowEvent::Resized(dims) => {
-                    let new_size = DeviceIntSize::new((dims.width as f32 * device_pixel_ratio) as i32, (dims.height as f32 * device_pixel_ratio) as i32);
-                    framebuffer_size = new_size;
+                    let new_size = ((dims.width as f32 * device_pixel_ratio) as i32, (dims.height as f32 * device_pixel_ratio) as i32);
+                    // Workaround for Rust issue #15701 (E0658).
+                    #[cfg(not(feature = "gleam"))]
+                    { framebuffer_size = renderer.resize(Some(new_size)); }
+                    #[cfg(feature = "gleam")]
+                    { framebuffer_size = DeviceIntSize::new(new_size.0, new_size.1); }
+
                     layout_size = framebuffer_size.to_f32() / euclid::TypedScale::new(device_pixel_ratio);
                     api.set_window_parameters(
                         document_id,
