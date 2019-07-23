@@ -567,14 +567,12 @@ fn main() {
     let mut window = make_window(
         size, dp_ratio, args.is_present("vsync"), &events_loop, args.is_present("angle"),
     );
-    let (dp_ratio, dim) = if args.is_present("headless") {
-        let dp_ratio = dp_ratio.unwrap_or(1.0);
-        let dim = size;
-        (dp_ratio, dim)
+    let mut dim = size;
+    let dp_ratio = if args.is_present("headless") {
+        dp_ratio.unwrap_or(1.0)
     } else {
-        let dp_ratio = dp_ratio.unwrap_or(window.hidpi_factor());
-        let dim = window.get_inner_size();
-        (dp_ratio, dim)
+        dim = window.get_inner_size();
+        dp_ratio.unwrap_or(window.hidpi_factor())
     };
 
     let needs_frame_notifier = ["perf", "reftest", "png", "rawtest"]
@@ -597,6 +595,7 @@ fn main() {
             None
         } else {
             let surface = instance.create_surface(window.get_window().unwrap());
+            dim = window.get_inner_size();
             Some(surface)
         };
 
