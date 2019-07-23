@@ -39,6 +39,10 @@ before_install:
   - source ../venv/bin/activate
   - python --version
   - pip install mako voluptuous PyYAML servo-tidy
+  - export VK_VERSION=1.1.108.0
+  - wget -O vulkan-sdk.tar.gz https://sdk.lunarg.com/sdk/download/$VK_VERSION/linux/vulkansdk-linux-x86_64-$VK_VERSION.tar.gz
+  - tar zxf vulkan-sdk.tar.gz
+  -
 script:
 #  - servo-tidy
   - if [ $BUILD_KIND = DEBUG ]; then (cd webrender_api && cargo test --verbose --features "ipc"); fi
