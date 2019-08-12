@@ -418,7 +418,7 @@ fn make_window(
     _angle: bool,
 ) -> WindowWrapper {
     let lsize = LogicalSize::new(size.width as f64, size.height as f64);
-    let mut wrapper = match *events_loop {
+    let wrapper = match *events_loop {
         Some(ref events_loop) => {
             let window = winit::WindowBuilder::new()
                 .with_title("WRench")

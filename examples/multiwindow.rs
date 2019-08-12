@@ -134,7 +134,7 @@ impl Window {
             let instance = back::Instance::create("gfx-rs instance", 1);
             let mut adapters = instance.enumerate_adapters();
             let adapter = adapters.remove(0);
-            let mut surface = instance.create_surface(&window);
+            let surface = instance.create_surface(&window);
             (window, instance, adapter, Some(surface))
         };
 

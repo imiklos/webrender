@@ -186,7 +186,7 @@ pub fn main_wrapper<E: Example>(
         let instance = back::Instance::create("gfx-rs instance", 1);
         let mut adapters = instance.enumerate_adapters();
         let adapter = adapters.remove(0);
-        let mut surface = Some(instance.create_surface(&window));
+        let surface = Some(instance.create_surface(&window));
         let winit::dpi::LogicalSize { width, height } = window.get_inner_size().unwrap();
         let init = {
             let cache_dir = dirs::cache_dir().expect("User's cache directory not found");
