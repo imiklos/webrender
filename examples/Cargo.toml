@@ -77,16 +77,16 @@ webrender = { path = "../webrender" }
 winit = "0.19"
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-version = "0.3.0"
+version = "0.3.2"
 optional = true
 features = ["winit"]
 
 [target.'cfg(target_os = "macos")'.dependencies.gfx-backend-metal]
-version = "0.3.0"
+version = "0.3.3"
 optional = true
 features = ["winit"]
 
 [target.'cfg(not(target_os = "macos"))'.dependencies.gfx-backend-vulkan]
-version = "0.3.0"
+version = "0.3.3"
 optional = true
 features = ["winit", "x11"]
