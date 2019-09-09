@@ -1070,9 +1070,9 @@ impl<B: hal::Backend> Device<B> {
             frame_images,
             viewport,
             if present_mode == hal::window::PresentMode::Mailbox {
-                (caps.image_count.end() - 1).min(3) as usize
+                *caps.image_count.end().min(&3) as usize
             } else {
-                (caps.image_count.end() - 1).min(2) as usize
+                *caps.image_count.end().min(&2) as usize
             },
         )
     }
